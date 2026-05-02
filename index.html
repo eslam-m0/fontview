@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fontview</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="dark">
+    <header>
+        <div class="logo">Fontview</div>
+        <div class="header-controls">
+            <button id="langToggle" class="btn-icon">عربي</button>
+            <button id="themeToggle" class="btn-icon">☀️</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="controls-panel">
+            <div class="toolbar-top">
+                <div class="file-upload-wrapper">
+                    <label for="fontInput" id="btnFolder" class="btn-primary">Select Font Folder</label>
+                    <input type="file" id="fontInput" webkitdirectory directory multiple accept=".ttf,.otf,.woff,.woff2">
+                    <span id="fileCount" class="file-count">0 files selected</span>
+                </div>
+                <button id="clearBtn" class="btn-outline">Clear All</button>
+            </div>
+
+            <div class="toolbar-middle" style="display: flex; gap: 15px; width: 100%; margin: 20px 0;">
+                <div class="input-group" style="flex: 2; margin: 0;">
+                    <label id="lblText">Preview Text:</label>
+                    <input type="text" id="previewText" value="" placeholder="Type something to preview...">
+                </div>
+                
+                <!-- إضافة خانة البحث الجديدة -->
+                <div class="input-group" style="flex: 1; margin: 0;">
+                    <label id="lblSearch">Search Fonts:</label>
+                    <input type="text" id="searchFont" placeholder="Search by name...">
+                </div>
+            </div>
+
+            <div class="toolbar-bottom">
+                <div class="slider-group">
+                    <label id="lblSize">Size:</label>
+                    <input type="range" id="fontSizeSlider" min="16" max="100" value="40">
+                    <span id="fontSizeDisplay">40px</span>
+                </div>
+                <div class="alignment-group">
+                    <button class="align-btn active" data-align="left">⬅</button>
+                    <button class="align-btn" data-align="center">↔</button>
+                    <button class="align-btn" data-align="right">➡</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fontContainer" class="font-grid">
+            <!-- سيتم إضافة بطاقات الخطوط هنا -->
+        </div>
+        
+        <!-- العنصر الوهمي للمراقبة (Infinite Scroll) -->
+        <div id="loadingObserver" style="height: 20px; text-align: center; color: var(--text-secondary); margin-top: 10px;"></div>
+    </main>
+
+    <footer>
+        <p>Created by</p>
+        <a href="https://linktr.ee/Eslam.mo" target="_blank" class="footer-link">
+            <img src="logo.png" alt="Eslam Logo" class="footer-logo">
+        </a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
