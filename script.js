@@ -1,4 +1,3 @@
-// تفعيل الـ PWA
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('PWA SW registered!'))
@@ -17,64 +16,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgColorPicker = document.getElementById('bgColorPicker');
     const alignBtns = document.querySelectorAll('.align-btn');
     const clearBtn = document.getElementById('clearBtn');
-    const exportFavBtn = document.getElementById('exportFavBtn');
     const themeToggle = document.getElementById('themeToggle');
     const langToggle = document.getElementById('langToggle');
     const fileCount = document.getElementById('fileCount');
     const btnFolder = document.getElementById('btnFolder');
     const loadingObserver = document.getElementById('loadingObserver');
-    const tabBtns = document.querySelectorAll('.tab-btn');
+    const installAppBtn = document.getElementById('installAppBtn');
+    
+    // متغيرات القائمة الجانبية
+    const openFavBtn = document.getElementById('openFavBtn');
+    const closeFavBtn = document.getElementById('closeFavBtn');
+    const favSidebar = document.getElementById('favSidebar');
+    const favList = document.getElementById('favList');
+    const exportFavBtn = document.getElementById('exportFavBtn');
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault(); deferredPrompt = e;
+        installAppBtn.style.display = 'inline-block';
+    });
+    installAppBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') installAppBtn.style.display = 'none';
+            deferredPrompt = null;
+        }
+    });
 
     const dict = {
         en: {
             folderBtn: "Select Font Folder", noFiles: "0 files selected", filesSelected: "files selected",
             previewLabel: "Preview Text:", searchLabel: "Search Fonts:", clear: "Clear All",
-            size: "Size:", spacing: "Spacing:", height: "Line H:", textCol: "Text Color", bgCol: "Bg Color",
-            placeholder: "Type something to preview...", searchPlaceholder: "Search by name...", loading: "Loading more...",
-            tabAll: "All Fonts", tabFav: "Favorites ⭐", exportFav: "📥 Export Favs"
+            size: "Size:", spacing: "Space:", height: "Line:", textCol: "Text", bgCol: "Bg",
+            placeholder: "Type something...", searchPlaceholder: "Search by name...", loading: "Loading more...",
+            favBtn: "⭐ Favorites", exportFav: "📥 Export Favs", installApp: "Install App 📱", favTitle: "Favorites ⭐"
         },
         ar: {
-            folderBtn: "اختر مجلد الخطوط", noFiles: "لم يتم اختيار ملفات", filesSelected: "ملف تم اختياره",
-            previewLabel: "نص المعاينة:", searchLabel: "البحث عن خط:", clear: "مسح الكل",
-            size: "الحجم:", spacing: "التباعد:", height: "السطر:", textCol: "لون النص", bgCol: "الخلفية",
-            placeholder: "اكتب شيئاً للمعاينة...", searchPlaceholder: "ابحث بالاسم...", loading: "جاري تحميل المزيد...",
-            tabAll: "كل الخطوط", tabFav: "المفضلة ⭐", exportFav: "📥 تصدير المفضلة"
+            folderBtn: "اختر المجلد", noFiles: "لم يتم الاختيار", filesSelected: "ملف",
+            previewLabel: "نص المعاينة:", searchLabel: "البحث:", clear: "مسح الكل",
+            size: "الحجم:", spacing: "التباعد:", height: "السطر:", textCol: "النص", bgCol: "الخلفية",
+            placeholder: "اكتب شيئاً...", searchPlaceholder: "ابحث بالاسم...", loading: "جاري التحميل...",
+            favBtn: "⭐ المفضلة", exportFav: "📥 التصدير", installApp: "تثبيت التطبيق 📱", favTitle: "المفضلة ⭐"
         }
     };
 
     let currentLang = 'en';
     let currentAlign = 'left';
-    let currentTab = 'all'; // all or fav
-    let favoriteFonts = new Set(); // مصفوفة المفضلة
+    let favoriteFonts = new Set(); 
     let allFontFiles = [];     
     let filteredFiles = [];    
     let currentRenderIndex = 0; 
     const batchSize = 30;       
     let createdObjectUrls = []; 
+    const fontSafeNameMap = new Map(); // لحفظ الاسم الآمن للمفضلة
 
-    // الفلترة الشاملة (البحث + التبويبات)
+    // فتح وغلق القائمة الجانبية
+    openFavBtn.addEventListener('click', () => favSidebar.classList.add('open'));
+    closeFavBtn.addEventListener('click', () => favSidebar.classList.remove('open'));
+
     function applyFilters() {
         const searchTerm = searchFont.value.toLowerCase();
-        filteredFiles = allFontFiles.filter(file => {
-            const displayName = file.name.split('.').slice(0, -1).join('.');
-            const matchesSearch = file.name.toLowerCase().includes(searchTerm);
-            const matchesTab = currentTab === 'all' || favoriteFonts.has(displayName);
-            return matchesSearch && matchesTab;
-        });
+        filteredFiles = allFontFiles.filter(file => file.name.toLowerCase().includes(searchTerm));
         cleanupMemory();
         renderNextBatch();
     }
-
-    // التبديل بين التبويبات
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            currentTab = e.target.dataset.tab;
-            exportFavBtn.style.display = currentTab === 'fav' ? 'inline-block' : 'none';
-            applyFilters();
-        });
-    });
 
     langToggle.addEventListener('click', () => {
         currentLang = currentLang === 'en' ? 'ar' : 'en';
@@ -91,14 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('lblBgColor').textContent = dict[currentLang].bgCol;
         clearBtn.textContent = dict[currentLang].clear;
         exportFavBtn.textContent = dict[currentLang].exportFav;
-        document.getElementById('tabAll').textContent = dict[currentLang].tabAll;
-        document.getElementById('tabFav').textContent = dict[currentLang].tabFav;
+        openFavBtn.textContent = dict[currentLang].favBtn;
+        document.getElementById('lblSidebarTitle').textContent = dict[currentLang].favTitle;
+        installAppBtn.textContent = dict[currentLang].installApp;
         previewText.placeholder = dict[currentLang].placeholder;
         searchFont.placeholder = dict[currentLang].searchPlaceholder;
         langToggle.textContent = currentLang === 'en' ? 'عربي' : 'English';
         
         updateFileCountDisplay();
-
         currentAlign = currentLang === 'en' ? 'left' : 'right';
         alignBtns.forEach(b => b.classList.remove('active'));
         document.querySelector(`[data-align="${currentAlign}"]`).classList.add('active');
@@ -106,19 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateFileCountDisplay() {
-        if (allFontFiles.length === 0) {
-            fileCount.textContent = dict[currentLang].noFiles;
-        } else {
-            fileCount.textContent = `${allFontFiles.length} ${dict[currentLang].filesSelected}`;
-        }
+        fileCount.textContent = allFontFiles.length === 0 ? dict[currentLang].noFiles : `${allFontFiles.length} ${dict[currentLang].filesSelected}`;
     }
 
     themeToggle.addEventListener('click', () => {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
         themeToggle.textContent = isDark ? '🌙' : '☀️';
-        
-        // تغيير ألوان المعاينة الافتراضية لتناسب המود الجديد
         bgColorPicker.value = isDark ? '#ffffff' : '#1e1e1e';
         textColorPicker.value = isDark ? '#121212' : '#ffffff';
         updatePreviews();
@@ -133,9 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fontInput.addEventListener('change', (e) => {
-        allFontFiles = Array.from(e.target.files).filter(file => 
-            file.name.match(/\.(ttf|otf|woff|woff2)$/i)
-        );
+        allFontFiles = Array.from(e.target.files).filter(file => file.name.match(/\.(ttf|otf|woff|woff2)$/i));
+        fontSafeNameMap.clear();
         updateFileCountDisplay();
         applyFilters();
     });
@@ -143,11 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchFont.addEventListener('input', applyFilters);
 
     function renderNextBatch() {
-        if (currentRenderIndex >= filteredFiles.length) {
-            loadingObserver.textContent = '';
-            return;
-        }
-
+        if (currentRenderIndex >= filteredFiles.length) { loadingObserver.textContent = ''; return; }
         loadingObserver.textContent = dict[currentLang].loading;
         const endIndex = Math.min(currentRenderIndex + batchSize, filteredFiles.length);
         const filesToRender = filteredFiles.slice(currentRenderIndex, endIndex);
@@ -155,13 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
         filesToRender.forEach((file, idx) => {
             const displayName = file.name.split('.').slice(0, -1).join('.');
             const format = file.name.split('.').pop().toUpperCase();
-            
             const safeFontFamily = `CustomFont_${currentRenderIndex + idx}_${Math.random().toString(36).substr(2, 5)}`;
+            fontSafeNameMap.set(displayName, safeFontFamily); // تخزين الاسم لربطه بالقائمة الجانبية
+            
             const fontUrl = URL.createObjectURL(file);
             createdObjectUrls.push(fontUrl); 
             
             const fontFace = new FontFace(safeFontFamily, `url(${fontUrl})`);
-            
             fontFace.load().then((loadedFace) => {
                 document.fonts.add(loadedFace);
                 createFontCard(safeFontFamily, displayName, format);
@@ -169,17 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         currentRenderIndex = endIndex;
-        if (currentRenderIndex >= filteredFiles.length) {
-            loadingObserver.textContent = '';
-        }
+        if (currentRenderIndex >= filteredFiles.length) loadingObserver.textContent = '';
     }
 
     const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && filteredFiles.length > 0 && currentRenderIndex < filteredFiles.length) {
-            renderNextBatch();
-        }
+        if (entries[0].isIntersecting && filteredFiles.length > 0 && currentRenderIndex < filteredFiles.length) renderNextBatch();
     }, { rootMargin: '100px' }); 
-
     observer.observe(loadingObserver);
 
     function createFontCard(safeFontFamily, displayName, format) {
@@ -195,10 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="badge">${format}</span>
                 </div>
                 <div class="card-actions">
-                    <button class="fav-btn ${isFav}" onclick="toggleFavorite('${displayName}', this)" title="Add to Favorites">⭐</button>
-                    <button class="copy-btn" onclick="copyFontName('${displayName}', this)">
-                        ${copyIcon} <span>Copy</span>
-                    </button>
+                    <button class="fav-btn ${isFav}" onclick="toggleFavorite('${displayName}', this)" title="Favorite">⭐</button>
+                    <button class="copy-btn" onclick="copyFontName('${displayName}', this)">${copyIcon} Copy</button>
                 </div>
             </div>
             <div class="preview-container" style="background-color: ${bgColorPicker.value};">
@@ -210,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
         fontContainer.appendChild(card);
     }
 
-    // دالة تحديث كل خصائص العرض
     function updatePreviews() {
         const text = previewText.value || previewText.placeholder;
         const size = fontSizeSlider.value;
@@ -220,25 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgColor = bgColorPicker.value;
 
         document.querySelectorAll('.font-preview').forEach(preview => {
-            preview.textContent = text;
-            preview.style.fontSize = `${size}px`;
-            preview.style.textAlign = currentAlign;
-            preview.style.letterSpacing = `${spacing}px`;
-            preview.style.lineHeight = lineHeight;
-            preview.style.color = txtColor;
+            preview.textContent = text; preview.style.fontSize = `${size}px`;
+            preview.style.textAlign = currentAlign; preview.style.letterSpacing = `${spacing}px`;
+            preview.style.lineHeight = lineHeight; preview.style.color = txtColor;
         });
-
-        document.querySelectorAll('.preview-container').forEach(container => {
-            container.style.backgroundColor = bgColor;
-        });
+        document.querySelectorAll('.preview-container').forEach(c => c.style.backgroundColor = bgColor);
     }
 
-    // مراقبة المدخلات
     previewText.addEventListener('input', updatePreviews);
-    fontSizeSlider.addEventListener('input', (e) => {
-        document.getElementById('fontSizeDisplay').textContent = `${e.target.value}px`;
-        updatePreviews();
-    });
+    fontSizeSlider.addEventListener('input', (e) => { document.getElementById('fontSizeDisplay').textContent = `${e.target.value}px`; updatePreviews(); });
     letterSpacingSlider.addEventListener('input', updatePreviews);
     lineHeightSlider.addEventListener('input', updatePreviews);
     textColorPicker.addEventListener('input', updatePreviews);
@@ -253,52 +230,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // التحكم في المفضلة
     window.toggleFavorite = function(name, btn) {
         if (favoriteFonts.has(name)) {
             favoriteFonts.delete(name);
-            btn.classList.remove('active');
-            if (currentTab === 'fav') {
-                btn.closest('.font-card').style.display = 'none';
-            }
+            if(btn) btn.classList.remove('active');
         } else {
             favoriteFonts.add(name);
-            btn.classList.add('active');
+            if(btn) btn.classList.add('active');
         }
+        updateSidebarList();
     };
 
-    // تصدير المفضلة إلى ملف نصي
-    exportFavBtn.addEventListener('click', () => {
+    function updateSidebarList() {
+        favList.innerHTML = '';
         if (favoriteFonts.size === 0) {
-            alert(currentLang === 'ar' ? 'لا يوجد خطوط في المفضلة لتصديرها!' : 'No favorite fonts to export!');
+            favList.innerHTML = `<p style="color: var(--text-secondary); text-align: center; margin-top: 20px;">No favorites yet.</p>`;
             return;
         }
+        favoriteFonts.forEach(name => {
+            const safeName = fontSafeNameMap.get(name);
+            const item = document.createElement('div');
+            item.className = 'fav-item';
+            item.innerHTML = `
+                <div style="font-family: '${safeName}', sans-serif; font-size: 1.2rem;">${name}</div>
+                <button class="close-sidebar" onclick="removeFavFromSidebar('${name}')" style="font-size: 1rem; color: #ff3b30;">✖</button>
+            `;
+            favList.appendChild(item);
+        });
+    }
+
+    window.removeFavFromSidebar = function(name) {
+        toggleFavorite(name, null); // يزيل من الـ Set
+        // تحديث النجمة في الواجهة الرئيسية إن كانت معروضة
+        const cards = document.querySelectorAll('.font-card');
+        cards.forEach(card => {
+            const fontName = card.querySelector('.font-name').textContent;
+            if (fontName === name) {
+                card.querySelector('.fav-btn').classList.remove('active');
+            }
+        });
+    };
+
+    exportFavBtn.addEventListener('click', () => {
+        if (favoriteFonts.size === 0) return;
         const textData = Array.from(favoriteFonts).join('\n');
         const blob = new Blob([textData], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Fontview_Favorites.txt';
-        a.click();
-        URL.revokeObjectURL(url);
+        a.href = url; a.download = 'Fontview_Favorites.txt';
+        a.click(); URL.revokeObjectURL(url);
     });
 
     clearBtn.addEventListener('click', () => {
         cleanupMemory();
         fontInput.value = ''; searchFont.value = '';
         allFontFiles = []; filteredFiles = []; favoriteFonts.clear();
-        updateFileCountDisplay();
+        updateFileCountDisplay(); updateSidebarList();
     });
 
     window.copyFontName = function(name, btn) {
         navigator.clipboard.writeText(name).then(() => {
             const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> <span>Copied!</span>`;
+            btn.innerHTML = `<span>Copied!</span>`;
             btn.style.color = 'var(--accent-color)';
-            setTimeout(() => {
-                btn.innerHTML = originalHtml;
-                btn.style.color = '';
-            }, 2000);
+            setTimeout(() => { btn.innerHTML = originalHtml; btn.style.color = ''; }, 2000);
         });
     };
 });

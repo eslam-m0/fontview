@@ -9,15 +9,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body data-theme="dark">
-    <header>
-        <div class="logo">Fontview</div>
-        <div class="header-controls">
-            <button id="langToggle" class="btn-icon">عربي</button>
-            <button id="themeToggle" class="btn-icon">☀️</button>
-        </div>
-    </header>
 
-    <main>
+    <!-- حاوية عائمة أعلى الشاشة تضم الهيدر ولوحة التحكم -->
+    <div class="sticky-top-wrapper">
+        <header>
+            <div class="logo">Fontview</div>
+            <div class="header-controls">
+                <button id="installAppBtn" class="btn-primary" style="display: none; background-color: #ff3b30; margin-right: 15px; padding: 5px 10px;">تثبيت التطبيق 📱</button>
+                <button id="openFavBtn" class="btn-outline">⭐ Favorites</button>
+                <button id="langToggle" class="btn-icon">عربي</button>
+                <button id="themeToggle" class="btn-icon">☀️</button>
+            </div>
+        </header>
+
         <div class="controls-panel">
             <div class="toolbar-top">
                 <div class="file-upload-wrapper">
@@ -25,82 +29,81 @@
                     <input type="file" id="fontInput" webkitdirectory directory multiple accept=".ttf,.otf,.woff,.woff2">
                     <span id="fileCount" class="file-count">0 files selected</span>
                 </div>
-                <div class="top-actions">
-                    <!-- زر تصدير المفضلة (مخفي افتراضياً) -->
-                    <button id="exportFavBtn" class="btn-outline" style="display: none;">📥 Export Favs</button>
-                    <button id="clearBtn" class="btn-outline">Clear All</button>
-                </div>
+                <button id="clearBtn" class="btn-outline">Clear All</button>
             </div>
 
-            <!-- تبويبات المفضلة -->
-            <div class="tabs-container">
-                <button class="tab-btn active" data-tab="all" id="tabAll">All Fonts</button>
-                <button class="tab-btn" data-tab="fav" id="tabFav">Favorites ⭐</button>
-            </div>
-
-            <div class="toolbar-middle" style="display: flex; flex-wrap: wrap; gap: 15px; width: 100%; margin: 20px 0;">
-                <div class="input-group" style="flex: 2; min-width: 250px;">
+            <div class="toolbar-middle">
+                <div class="input-group" style="flex: 2;">
                     <label id="lblText">Preview Text:</label>
                     <input type="text" id="previewText" value="" placeholder="Type something to preview...">
                 </div>
                 
-                <div class="input-group" style="flex: 1; min-width: 150px;">
+                <div class="input-group" style="flex: 1;">
                     <label id="lblSearch">Search Fonts:</label>
                     <input type="text" id="searchFont" placeholder="Search by name...">
                 </div>
 
-                <!-- أدوات اختيار الألوان -->
-                <div class="input-group color-pickers" style="flex: 1; min-width: 150px; flex-direction: row; align-items: flex-end; gap: 10px;">
+                <div class="input-group color-pickers" style="flex-direction: row; gap: 10px;">
                     <div>
-                        <label id="lblTextColor" style="display: block; font-size: 0.8rem; margin-bottom: 5px;">Text Color</label>
+                        <label id="lblTextColor">Text</label>
                         <input type="color" id="textColorPicker" value="#ffffff">
                     </div>
                     <div>
-                        <label id="lblBgColor" style="display: block; font-size: 0.8rem; margin-bottom: 5px;">Bg Color</label>
+                        <label id="lblBgColor">Bg</label>
                         <input type="color" id="bgColorPicker" value="#1e1e1e">
                     </div>
                 </div>
             </div>
 
-            <div class="toolbar-bottom" style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <div class="toolbar-bottom">
                 <div class="slider-group">
                     <label id="lblSize">Size:</label>
                     <input type="range" id="fontSizeSlider" min="16" max="100" value="40">
                     <span id="fontSizeDisplay">40px</span>
                 </div>
-                <!-- أدوات المسافات -->
                 <div class="slider-group">
-                    <label id="lblSpacing">Spacing:</label>
+                    <label id="lblSpacing">Space:</label>
                     <input type="range" id="letterSpacingSlider" min="-5" max="20" value="0">
                 </div>
                 <div class="slider-group">
-                    <label id="lblLineHeight">Line H:</label>
+                    <label id="lblLineHeight">Line:</label>
                     <input type="range" id="lineHeightSlider" min="0.5" max="3" step="0.1" value="1.2">
                 </div>
 
-                <div class="alignment-group" style="margin-left: auto;">
+                <div class="alignment-group">
                     <button class="align-btn active" data-align="left">⬅</button>
                     <button class="align-btn" data-align="center">↔</button>
                     <button class="align-btn" data-align="right">➡</button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="fontContainer" class="font-grid">
-            <!-- سيتم إضافة بطاقات الخطوط هنا -->
-        </div>
-        
+    <!-- شبكة الخطوط -->
+    <main>
+        <div id="fontContainer" class="font-grid"></div>
         <div id="loadingObserver" style="height: 20px; text-align: center; color: var(--text-secondary); margin-top: 10px;"></div>
     </main>
 
+    <!-- القائمة الجانبية للمفضلة -->
+    <div id="favSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2 id="lblSidebarTitle">Favorites ⭐</h2>
+            <button id="closeFavBtn" class="close-sidebar">✖</button>
+        </div>
+        <button id="exportFavBtn" class="btn-primary" style="margin-bottom: 15px; width: 100%;">📥 Export Favs</button>
+        <div id="favList" class="fav-list">
+            <!-- ستظهر الخطوط المفضلة هنا -->
+        </div>
+    </div>
+
+    <!-- التذييل العائم -->
     <footer>
-        <p>Created by</p>
+        <p class="footer-msg">اتمني لكم التوفيق</p>
+        <p class="footer-rights">جميع الحقوق محفوظة - 2026</p>
         <a href="https://linktr.ee/Eslam.mo" target="_blank" class="footer-link">
             <img src="logo.png" alt="Eslam Logo" class="footer-logo">
         </a>
-        <!-- النصوص الجديدة المطلوبة -->
-        <p class="footer-msg">اتمني لكم التوفيق</p>
-        <p class="footer-rights">جميع الحقوق محفوظة - 2026</p>
     </footer>
 
     <script src="script.js"></script>
