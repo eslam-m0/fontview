@@ -1,3 +1,4 @@
+// تسجيل الـ PWA للعمل بدون إنترنت
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('PWA SW registered!'))
@@ -63,13 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentLang = 'en';
     let currentAlign = 'left';
-    let favoriteFonts = new Set(); 
     let allFontFiles = [];     
     let filteredFiles = [];    
     let currentRenderIndex = 0; 
     const batchSize = 30;       
     let createdObjectUrls = []; 
-    const fontSafeNameMap = new Map(); // لحفظ الاسم الآمن للمفضلة
+    
+    const fontSafeNameMap = new Map(); 
+    const fontFileNameMap = new Map(); // لحفظ اسم الملف الأصلي بالامتداد
+
+    // تحميل المفضلة من ذاكرة المتصفح (Persistence)
+    let savedFavs = localStorage.getItem('fontview_favorites');
+    let favoriteFonts = savedFavs ? new Set(JSON.parse(savedFavs)) : new Set();
+    
+    // إظهار المفضلة المحفوظة عند فتح التطبيق
+    updateSidebarList();
+
+    function saveFavorites() {
+        localStorage.setItem('fontview_favorites', JSON.stringify(Array.from(favoriteFonts)));
+    }
 
     // فتح وغلق القائمة الجانبية
     openFavBtn.addEventListener('click', () => favSidebar.classList.add('open'));
@@ -135,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fontInput.addEventListener('change', (e) => {
         allFontFiles = Array.from(e.target.files).filter(file => file.name.match(/\.(ttf|otf|woff|woff2)$/i));
         fontSafeNameMap.clear();
+        fontFileNameMap.clear();
         updateFileCountDisplay();
         applyFilters();
     });
@@ -151,7 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const displayName = file.name.split('.').slice(0, -1).join('.');
             const format = file.name.split('.').pop().toUpperCase();
             const safeFontFamily = `CustomFont_${currentRenderIndex + idx}_${Math.random().toString(36).substr(2, 5)}`;
-            fontSafeNameMap.set(displayName, safeFontFamily); // تخزين الاسم لربطه بالقائمة الجانبية
+            
+            fontSafeNameMap.set(displayName, safeFontFamily); 
+            fontFileNameMap.set(displayName, file.name); // حفظ الاسم الأصلي بالامتداد
             
             const fontUrl = URL.createObjectURL(file);
             createdObjectUrls.push(fontUrl); 
@@ -159,12 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const fontFace = new FontFace(safeFontFamily, `url(${fontUrl})`);
             fontFace.load().then((loadedFace) => {
                 document.fonts.add(loadedFace);
-                createFontCard(safeFontFamily, displayName, format);
+                createFontCard(safeFontFamily, displayName, format, file.name); // تمرير اسم الملف الأصلي
             }).catch(() => {});
         });
 
         currentRenderIndex = endIndex;
         if (currentRenderIndex >= filteredFiles.length) loadingObserver.textContent = '';
+        
+        // تحديث الخطوط في القائمة الجانبية بعد تحميل الدفعة
+        updateSidebarList();
     }
 
     const observer = new IntersectionObserver((entries) => {
@@ -172,12 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { rootMargin: '100px' }); 
     observer.observe(loadingObserver);
 
-    function createFontCard(safeFontFamily, displayName, format) {
+    function createFontCard(safeFontFamily, displayName, format, originalFileName) {
         const card = document.createElement('div');
         card.className = 'font-card';
         const isFav = favoriteFonts.has(displayName) ? 'active' : '';
         const copyIcon = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
 
+        // تم تغيير دالة النسخ لتنسخ originalFileName بدلاً من displayName
         card.innerHTML = `
             <div class="card-header">
                 <div class="font-info">
@@ -186,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="card-actions">
                     <button class="fav-btn ${isFav}" onclick="toggleFavorite('${displayName}', this)" title="Favorite">⭐</button>
-                    <button class="copy-btn" onclick="copyFontName('${displayName}', this)">${copyIcon} Copy</button>
+                    <button class="copy-btn" onclick="copyFontName('${originalFileName}', this)">${copyIcon} Copy</button>
                 </div>
             </div>
             <div class="preview-container" style="background-color: ${bgColorPicker.value};">
@@ -238,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             favoriteFonts.add(name);
             if(btn) btn.classList.add('active');
         }
+        saveFavorites(); // حفظ التعديلات
         updateSidebarList();
     };
 
@@ -248,19 +269,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         favoriteFonts.forEach(name => {
-            const safeName = fontSafeNameMap.get(name);
+            const safeName = fontSafeNameMap.get(name) || 'sans-serif'; 
+            const exactFileName = fontFileNameMap.get(name) || name; // الاسم بالامتداد
+            
             const item = document.createElement('div');
             item.className = 'fav-item';
+            // إضافة زر النسخ في القائمة الجانبية
             item.innerHTML = `
-                <div style="font-family: '${safeName}', sans-serif; font-size: 1.2rem;">${name}</div>
-                <button class="close-sidebar" onclick="removeFavFromSidebar('${name}')" style="font-size: 1rem; color: #ff3b30;">✖</button>
+                <div style="font-family: '${safeName}', sans-serif; font-size: 1.1rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${name}">${name}</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="copy-btn" onclick="copyFontName('${exactFileName}', this)" style="border:none; background:none; cursor:pointer; color:var(--text-secondary);" title="Copy Exact Name">
+                        <svg viewBox="0 0 24 24" width="18" height="18" style="fill:currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                    <button class="close-sidebar" onclick="removeFavFromSidebar('${name}')" style="font-size: 1.2rem; color: #ff3b30; border:none; background:none; cursor:pointer;">✖</button>
+                </div>
             `;
             favList.appendChild(item);
         });
     }
 
     window.removeFavFromSidebar = function(name) {
-        toggleFavorite(name, null); // يزيل من الـ Set
+        favoriteFonts.delete(name);
+        saveFavorites(); // حفظ التعديلات
+        updateSidebarList();
+        
         // تحديث النجمة في الواجهة الرئيسية إن كانت معروضة
         const cards = document.querySelectorAll('.font-card');
         cards.forEach(card => {
@@ -284,7 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.addEventListener('click', () => {
         cleanupMemory();
         fontInput.value = ''; searchFont.value = '';
-        allFontFiles = []; filteredFiles = []; favoriteFonts.clear();
+        allFontFiles = []; filteredFiles = []; 
+        favoriteFonts.clear();
+        saveFavorites(); // حذف المفضلة من الذاكرة أيضاً
         updateFileCountDisplay(); updateSidebarList();
     });
 
